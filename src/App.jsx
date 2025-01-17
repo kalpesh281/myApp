@@ -1,14 +1,19 @@
-import "./App.css";
-import Effect from "./components/effect";
-// import Up from "./components/useState";`
+import ThemeProvider from "./context/themeContext"; // Adjust the path as needed
+import ChildA from "./components/ChildA"; // Import your child component
+import "./style/global.css";       // Common styles
+import "./style/light.css";  // Light theme styles
+import './style/dark.css'
+
 
 function App() {
   return (
-    <>
-      {/* <h1>Counter App</h1> */}
-      {/* <Up /> */}
-      <Effect/>
-    </>
+    // Wrap the app in the ThemeProvider
+    <ThemeProvider>
+      <div style={{ padding: "20px", border: "1px solid #ccc" }}>
+        <h1>React App with CSS Themes</h1>
+        <ChildA />
+      </div>
+    </ThemeProvider>
   );
 }
 
