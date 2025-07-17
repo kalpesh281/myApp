@@ -62,7 +62,8 @@ jobs:
             docker pull $IMAGE:$TAG
 
             echo "✅ Running the Docker container '$CONTAINER_NAME'..."
-            docker run -d --name $CONTAINER_NAME --network $NETWORK_NAME -p ${PORT}:5000 $IMAGE:$TAG
+            docker run -d --name $CONTAINER_NAME --network $NETWORK_NAME -p ${PORT}:${PORT} $IMAGE:$TAG
+
             echo "✅ Container '$CONTAINER_NAME' is now running on port $PORT."
 
             echo "🧹 Cleaning up old images (excluding $TAG)..."
