@@ -1,0 +1,73 @@
+name: Deploy Frontend
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Extract tag name
+        id: tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t gradscaler/ui:${{ env.TAG_NAME }} .
+
+      - name: Push Docker image
+        run: |
+          docker push gradscaler/ui:${{ env.TAG_NAME }}
+
+      - name: Deploy on Remote Server with Network and Cleanup
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_PRIVATE_KEY }}
+          script: |
+            IMAGE=gradscaler/ui
+            TAG=${{ env.TAG_NAME }}
+            CONTAINER_NAME=ui_container
+            NETWORK_NAME=cicd_test
+            PORT=5005
+
+            echo "✅ Checking if Docker network '$NETWORK_NAME' exists..."
+            if ! docker network inspect $NETWORK_NAME > /dev/null 2>&1; then
+              echo "❌ Network '$NETWORK_NAME' does not exist. Creating it..."
+              docker network create $NETWORK_NAME
+            else
+              echo "✅ Network '$NETWORK_NAME' already exists."
+            fi
+
+            echo "✅ Stopping and removing existing container '$CONTAINER_NAME' if it exists..."
+            if docker ps -a --format '{{.Names}}' | grep -q $CONTAINER_NAME; then
+              docker stop $CONTAINER_NAME || true
+              docker rm $CONTAINER_NAME || true
+              echo "✅ Removed existing container '$CONTAINER_NAME'."
+            else
+              echo "✅ No existing container '$CONTAINER_NAME' to remove."
+            fi
+
+            echo "✅ Pulling the latest Docker image '$IMAGE:$TAG'..."
+            docker pull $IMAGE:$TAG
+
+            echo "✅ Running the Docker container '$CONTAINER_NAME'..."
+            docker run -d --name $CONTAINER_NAME --network $NETWORK_NAME -p ${PORT}:5000 $IMAGE:$TAG
+            echo "✅ Container '$CONTAINER_NAME' is now running on port $PORT."
+
+            echo "🧹 Cleaning up old images (excluding $TAG)..."
+            docker images --format '{{.Repository}}:{{.Tag}}' | grep "^$IMAGE:" | grep -v ":$TAG" | xargs -r docker rmi -f
+            echo "✅ Old images cleaned up."
+            echo "Deployment completed successfully!"
+            echo "You can access the application at http://${{ secrets.SERVER_IP }}:${PORT }"
+            
