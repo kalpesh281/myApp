@@ -70,5 +70,5 @@ jobs:
             docker images --format '{{.Repository}}:{{.Tag}}' | grep "^$IMAGE:" | grep -v ":$TAG" | xargs -r docker rmi -f
             echo "✅ Old images cleaned up."
             echo "Deployment completed successfully!"
-            echo "You can access the application at http://${{ secrets.SERVER_IP }}:${PORT }"
+            echo "You can access the application at http://${{ secrets.SERVER_IP }}:${PORT}"
             
